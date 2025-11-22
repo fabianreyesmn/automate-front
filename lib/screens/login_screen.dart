@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,28 +13,26 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-  bool loading = false;
 
   Future<void> _loginEmail() async {
-    setState(() => loading = true);
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.signInWithEmailPassword(
+      emailCtrl.text.trim(),
+      passCtrl.text.trim(),
+    );
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.errorMessage ?? "Error desconocido")),
       );
-      if (mounted) context.go('/home');
-    } on FirebaseAuthException catch (e) {
-      String message = "Error al iniciar sesión";
-      if (e.code == 'user-not-found') message = "Usuario no encontrado";
-      if (e.code == 'wrong-password') message = "Contraseña incorrecta";
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    } finally {
-      setState(() => loading = false);
     }
+    // La navegación es manejada automáticamente por el AppRouter
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -47,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextField(
                   controller: emailCtrl,
                   decoration: const InputDecoration(labelText: "Correo"),
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -55,10 +55,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   decoration: const InputDecoration(labelText: "Contraseña"),
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: loading ? null : _loginEmail,
-                  child: const Text("Iniciar sesión"),
-                ),
+                if (authProvider.loading)
+                  const CircularProgressIndicator()
+                else
+                  ElevatedButton(
+                    onPressed: _loginEmail,
+                    child: const Text("Iniciar sesión"),
+                  ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => context.go('/register'),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,28 +13,26 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
-  bool loading = false;
 
   Future<void> _register() async {
-    setState(() => loading = true);
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: emailCtrl.text.trim(),
-        password: passCtrl.text.trim(),
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final success = await authProvider.createUserWithEmailPassword(
+      emailCtrl.text.trim(),
+      passCtrl.text.trim(),
+    );
+
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(authProvider.errorMessage ?? "Error desconocido")),
       );
-      if (mounted) context.go('/home');
-    } on FirebaseAuthException catch (e) {
-      String message = "Error al registrarse";
-      if (e.code == 'email-already-in-use') message = "El correo ya está registrado";
-      if (e.code == 'weak-password') message = "La contraseña es muy débil";
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    } finally {
-      setState(() => loading = false);
     }
+    // La navegación es manejada automáticamente por el AppRouter
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -47,6 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextField(
                   controller: emailCtrl,
                   decoration: const InputDecoration(labelText: "Correo"),
+                  keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -55,10 +55,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: const InputDecoration(labelText: "Contraseña"),
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: loading ? null : _register,
-                  child: const Text("Registrarse"),
-                ),
+                if (authProvider.loading)
+                  const CircularProgressIndicator()
+                else
+                  ElevatedButton(
+                    onPressed: _register,
+                    child: const Text("Registrarse"),
+                  ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => context.go('/login'),

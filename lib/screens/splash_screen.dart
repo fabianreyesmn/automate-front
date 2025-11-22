@@ -17,6 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void _checkAuth() {
+    if (!mounted) return; // Add this line
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       context.go('/login');
