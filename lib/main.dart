@@ -1,7 +1,9 @@
+import 'package:automate/providers/reminder_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'router/app_router.dart';
@@ -11,14 +13,29 @@ import 'services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Set timeago locale
+  timeago.setLocaleMessages('es', timeago.EsMessages());
+
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await SupabaseService.initialize();
   await NotificationService().init();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, ReminderProvider>(
+          create: (_) => ReminderProvider(),
+          update: (context, auth, previous) {
+            // Cuando el estado de auth cambia, actualizamos el provider de recordatorios
+            if (auth.user != previous?.currentUser) {
+              previous?.updateUser(auth.user);
+            }
+            return previous!;
+          },
+        ),
+      ],
       child: const AutoMateApp(),
     ),
   );

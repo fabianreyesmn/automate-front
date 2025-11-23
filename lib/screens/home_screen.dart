@@ -135,6 +135,7 @@ class _DashboardCard extends StatelessWidget {
                   ],
                 ),
               ),
+              const Icon(LucideIcons.chevronRight, color: Colors.grey),
             ],
           ),
         ),
