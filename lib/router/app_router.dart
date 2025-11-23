@@ -7,6 +7,7 @@ import '../screens/login_screen.dart';
 import '../screens/register_screen.dart';
 import '../screens/main_screen.dart';
 import '../screens/vehicle_details_screen.dart';
+import '../screens/add_reminder_screen.dart';
 
 class AppRouter {
   static GoRouter createRouter(AuthProvider authProvider) {
@@ -19,6 +20,7 @@ class AppRouter {
         GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
         GoRoute(path: '/home', builder: (_, __) => const MainScreen()),
         GoRoute(path: '/add-vehicle', builder: (_, __) => const AddVehicleScreen()),
+        GoRoute(path: '/add-reminder', builder: (_, __) => AddReminderScreen()),
         GoRoute(
           path: '/vehicle-details',
           builder: (context, state) {
