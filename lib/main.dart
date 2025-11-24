@@ -1,3 +1,4 @@
+import 'package:automate/providers/main_screen_provider.dart';
 import 'package:automate/providers/reminder_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -25,6 +26,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => MainScreenProvider()),
         ChangeNotifierProxyProvider<AuthProvider, ReminderProvider>(
           create: (_) => ReminderProvider(),
           update: (context, auth, previous) {

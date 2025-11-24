@@ -27,8 +27,8 @@ class Reminder {
       userId: json['user_id'],
       vehicleId: json['vehicle_id'],
       title: json['title'],
-      notes: json['notes'], // Changed from description
-      dueDate: DateTime.parse(json['due_date']), // Changed from date
+      notes: json['notes'],
+      dueDate: DateTime.parse(json['due_date']),
       isCompleted: json['is_completed'] ?? false,
       createdAt: DateTime.parse(json['created_at']),
     );

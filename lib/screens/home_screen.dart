@@ -1,6 +1,10 @@
+import 'package:automate/providers/main_screen_provider.dart';
+import 'package:automate/providers/reminder_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -9,9 +13,9 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
     return ListView(
+      padding: const EdgeInsets.all(16.0),
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 16.0),
@@ -19,75 +23,120 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome, ${user?.displayName ?? user?.email ?? 'User'}!',
+                'Bienvenido, ${user?.displayName ?? user?.email ?? 'Usuario'}!',
                 style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const Text(
-                "Here's your vehicle summary.",
+                "Aquí está el resumen de tu vehículo.",
                 style: TextStyle(color: Colors.grey),
               ),
             ],
           ),
         ),
         
-        // Heads up/Alert card
-        Card(
-          color: Colors.yellow[100],
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: Colors.yellow[700]!, width: 1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                Icon(LucideIcons.alertTriangle, color: Colors.yellow[800]),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Heads up!', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text('You have 2 documents expiring soon.'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+        // Warnings Section
+        const _WarningsSection(),
         
         const SizedBox(height: 24),
 
         // Navigation Cards
         _DashboardCard(
           icon: LucideIcons.car,
-          title: 'Digital Glovebox',
-          subtitle: 'Manage your vehicles & documents',
+          title: 'Guantera Digital',
+          subtitle: 'Gestiona tus vehículos y documentos',
           onTap: () {
-            // This could navigate or switch tabs
+            print('[HomeScreen] Digital Glovebox card tapped!');
+            context.read<MainScreenProvider>().setIndex(1);
           },
         ),
         const SizedBox(height: 12),
         _DashboardCard(
           icon: LucideIcons.bell,
-          title: 'Reminders',
-          subtitle: 'View upcoming expirations',
+          title: 'Recordatorios',
+          subtitle: 'Ver próximos vencimientos',
           onTap: () {
-            // This could navigate or switch tabs
+            print('[HomeScreen] Reminders card tapped!');
+            context.read<MainScreenProvider>().setIndex(2);
           },
         ),
         const SizedBox(height: 12),
         _DashboardCard(
           icon: LucideIcons.map,
-          title: 'Pre-Trip Report',
-          subtitle: 'Plan your next journey',
+          title: 'Reporte Pre-Viaje',
+          subtitle: 'Planifica tu próximo viaje',
           onTap: () {
-            // This could navigate or switch tabs
+            print('[HomeScreen] Pre-Trip Report card tapped!');
+            context.read<MainScreenProvider>().setIndex(3);
           },
         ),
       ],
+    );
+  }
+}
+
+class _WarningsSection extends StatelessWidget {
+  const _WarningsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final reminderProvider = context.watch<ReminderProvider>();
+    final warnings = reminderProvider.warnings;
+
+    if (reminderProvider.isLoading && warnings.isEmpty) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(8.0),
+        child: CircularProgressIndicator(),
+      ));
+    }
+
+    if (warnings.isEmpty) {
+      // Puedes mostrar una tarjeta de "todo en orden" si lo prefieres
+      return const SizedBox.shrink(); 
+    }
+
+    final overdueCount = reminderProvider.overdueReminders.length;
+    final dueSoonCount = reminderProvider.dueSoonReminders.length;
+    final isUrgent = overdueCount > 0;
+
+    final cardColor = isUrgent ? Colors.red.withOpacity(0.1) : Colors.orange.withOpacity(0.1);
+    final iconColor = isUrgent ? Colors.red[800] : Colors.orange[800];
+    final borderColor = isUrgent ? Colors.red.withOpacity(0.3) : Colors.orange.withOpacity(0.3);
+    final mostUrgentWarning = warnings.first;
+
+    String title = isUrgent ? '$overdueCount Recordatorio(s) Vencido(s)' : '$dueSoonCount Recordatorio(s) Próximo(s)';
+    if (overdueCount > 0 && dueSoonCount > 0) {
+      title = '$overdueCount vencido(s), $dueSoonCount próximo(s)';
+    }
+
+    return Card(
+      color: cardColor,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          children: [
+            Icon(LucideIcons.alertTriangle, color: iconColor),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: iconColor)),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Más urgente: ${mostUrgentWarning.title} (${timeago.format(mostUrgentWarning.dueDate, locale: 'es')})',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: iconColor),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

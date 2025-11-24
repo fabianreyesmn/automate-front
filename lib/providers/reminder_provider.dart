@@ -1,8 +1,6 @@
-import 'dart:convert';
+import 'package:automate/services/reminder_service.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import '../models/reminder.dart';
 
 enum ReminderStatus { overdue, dueSoon, safe }
@@ -30,14 +28,14 @@ class ReminderProvider with ChangeNotifier {
     }
   }
 
-  // Getter para las advertencias (vencidos y próximos a vencer)
   List<Reminder> get warnings {
     final now = DateTime.now();
-    return _reminders.where((r) {
+    final result = _reminders.where((r) {
       if (r.isCompleted) return false;
       final status = getReminderStatus(r, now);
       return status == ReminderStatus.overdue || status == ReminderStatus.dueSoon;
     }).toList()..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+    return result;
   }
 
   List<Reminder> get overdueReminders => warnings.where((r) => getReminderStatus(r) == ReminderStatus.overdue).toList();
@@ -57,31 +55,27 @@ class ReminderProvider with ChangeNotifier {
   }
 
   Future<void> fetchReminders() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (_currentUser == null) {
+      print('[ReminderProvider] fetchReminders called, but user is null.');
+      return;
+    }
 
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final token = await user.getIdToken();
-      final backendUrl = dotenv.env['BACKEND_URL'];
-      final url = Uri.parse('$backendUrl/api/reminders');
-
-      final response = await http.get(url, headers: {
-        'Authorization': 'Bearer $token',
-      });
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List<dynamic> reminderList = data['reminders'];
-        _reminders = reminderList.map((json) => Reminder.fromJson(json)).toList();
-      } else {
-        _errorMessage = 'Failed to load reminders.';
+      final token = await _currentUser!.getIdToken();
+      if (token == null) {
+        throw Exception('Authentication token was null.');
       }
+      // Usar el ReminderService para obtener los datos
+      _reminders = await ReminderService.getReminders(token);
+      print('[ReminderProvider] Fetch successful via ReminderService. Loaded ${_reminders.length} reminders.');
+
     } catch (e) {
       _errorMessage = 'An error occurred: $e';
+      print('[ReminderProvider] Fetch error via ReminderService: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
